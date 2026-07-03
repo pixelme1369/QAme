@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: qame
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:packages
+      - name: Apply migrations against a clean database
+        run: npm run migrate
+        env:
+          DATABASE_URL: postgres://postgres:ci@localhost:5432/qame
+      - name: Seed the default account and scorecard
+        run: npm run seed
+        env:
+          DATABASE_URL: postgres://postgres:ci@localhost:5432/qame
+          SEED_ACCOUNT_EXTERNAL_ID: ci-account
+      - name: Re-run migrate and seed (idempotency check)
+        run: npm run migrate && npm run seed
+        env:
+          DATABASE_URL: postgres://postgres:ci@localhost:5432/qame
+          SEED_ACCOUNT_EXTERNAL_ID: ci-account
+      - name: End-to-end pipeline smoke test (stubbed AI client)
+        run: npx tsx scripts/e2e-smoke.mts
+        env:
+          DATABASE_URL: postgres://postgres:ci@localhost:5432/qame
+          SEED_ACCOUNT_EXTERNAL_ID: ci-account

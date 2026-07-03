@@ -1,0 +1,21 @@
+{
+  "name": "qame",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Enterprise Call QA & Conversation Intelligence Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w @qame/scorecard-schema && npm run build -w @qame/db",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
+    "test": "npm run build:packages && npm run test --workspaces --if-present",
+    "build": "npm run build:packages && npm run build --workspaces --if-present",
+    "migrate": "npm run migrate -w @qame/db",
+    "seed": "npm run seed -w @qame/db"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
